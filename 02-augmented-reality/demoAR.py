@@ -53,7 +53,7 @@ def main():
 
     # open window where we will show video stream
     cv2.namedWindow("Calibration and augmented reality demo")
-
+    
     # construct array of checkerboard coordinates in object coordinate frame
     grid = args.grid_size
     object_points = [[i, j, 0] for j in range(grid[1]) for i in range(grid[0])]
@@ -130,13 +130,13 @@ def main():
         ret, corners = cv2.findChessboardCorners(gray, (5,6), None)
        
         if ret:
-            print("============ a corner had been detected =================")
+            print("============ corners in a frame had been detected =================")
              
             # TODO 1.3: if corners found, get sub-pixel refinement of corners
-            print(corners)
+            #print(corners)
             
-            search_window_size = 5 # this will be multiplied by 2
-            dead_zone_size = -1 
+            search_window_size = 7 # this will be multiplied by 2
+            dead_zone_size = -2 
             
             corners = cv2.cornerSubPix(gray,corners, (search_window_size,search_window_size), (dead_zone_size,dead_zone_size), criteria)
             
@@ -168,43 +168,112 @@ def main():
                 points3d = np.array(points3d, dtype='float32')
                 points2d = np.array(points2d, dtype='float32')
                 
+                """
+                print("points3d shape")
                 print(points3d.shape)
+                print(len(points3d.shape))
+                """
+                
+                
+                len_obj = 0
                 
                 if(len(points3d.shape) == 2):
-                    m = points3d.shape
+                    
+                    m, _ = points3d.shape
                     points3d = points3d.reshape(m,3)
                     points2d = points2d.reshape(m, 2)
+                    len_obj = m
                 else:
                     m, n, _ = points3d.shape
                     points3d = points3d.reshape(n * m,3)
                     points2d = points2d.reshape(n * m, 2)
+                    len_obj = n*m
                 
-                
+                print("Shapes of point3d/2d")
                 print(points3d.shape)
                 print(points2d.shape)
                 
-                points3d = points3d.reshape(n * m,3)
-                points2d = points2d.reshape(n * m, 2)
-                
-                
+                print("intrinsics shape")
                 print(intrinsics.shape)
                 print(type(intrinsics))
                 
                 ret, rotation_vectors, translation_vectors, _ = cv2.solvePnPRansac(points3d, points2d, intrinsics, distortion)
                 
+                """
                 print("====Rot and trans vectors====")
                 print(rotation_vectors)
                 
                 print(translation_vectors)
+                """
+                
                 # TODO 2.3 project 3D points to image using estimated parameters
-                def compute_projection_error():
-                    return 0.
-            
-                projected_points, jacobian = cv2.projectPoints(points3d, translation_vectors, rotation_vectors,  intrinsics, distortion)
                 
-                image = draw(image, projected_points)
+                #projected_points, jacobian = cv2.projectPoints(points3d, translation_vectors, rotation_vectors,  intrinsics, distortion)
                 
-                cv2.waitKey(5000)
+                #print(projected_points.shape)
+                projected_point, jacobian = cv2.projectPoints(points3d, translation_vectors, rotation_vectors,  intrinsics, distortion)
+                
+                def compute_projection_error(projected_point):
+                    error = 0.
+                    print("===##=== inside the error function ===##===")
+                    print(points2d.shape)
+                    for i in range(len_obj):
+                        #print("the error")                        
+                        error += np.sqrt(np.linalg.norm(projected_point[i] - points2d[i]))
+                        #error += cv2.norm(projected_point, points2d[i], cv2.NORM_L2)    
+                    print( "total error: {}".format(error/len_obj) )
+                 
+                compute_projection_error(projected_point)
+                
+                
+                #image = draw(image)
+                
+                cv2.waitKey(1000)
+                
+                def draw(img, corners, imgpts):
+                    axis = np.float32([[1,0,0], [0,1,0], [0,0,-1]]).reshape(-1,3)
+                    print("======== drawing ========")
+                    corner = tuple(corners[17].ravel())
+                    
+                    # project 3D points to image plane
+                    imgpts, jac = cv2.projectPoints(axis, translation_vectors, rotation_vectors,  intrinsics, distortion)
+                    
+                    print("====Rot and trans vectors====")
+                    print(rotation_vectors)
+                    print(translation_vectors)
+                    
+                    
+                    
+                    print(imgpts.shape)
+                    print(corner)
+                    print(tuple(map(int, tuple(imgpts[1].ravel()))))
+                    #img = draw(img,corners2,imgpts)
+                    
+                    img = cv2.line(img, tuple(map(int, corner)), tuple(map(int, tuple(imgpts[0].ravel()))), (255,0,0), 5)
+                    img = cv2.line(img, tuple(map(int, corner)), tuple(map(int, tuple(imgpts[1].ravel()))), (0,255,0), 5)
+                    img = cv2.line(img, tuple(map(int, corner)), tuple(map(int, tuple(imgpts[2].ravel()))), (0,0,255), 5)
+                    return img
+                
+                
+                def draw_cube(img, corners, imgpts):
+                    print("======== drawing cube ========")
+                    # project 3D points to image plan
+                    imgpts, jac = cv2.projectPoints(cube, translation_vectors, rotation_vectors,  intrinsics, distortion)
+                    # draw ground floor in green
+                    imgpts = np.array(imgpts, dtype="float32")
+                    
+                    print(type(imgpts))
+                    
+                    img = cv2.drawContours(img, imgpts[:4].astype(int),-1,(0,255,0),-3)
+                    # draw pillars in blue color
+                    for i,j in zip(range(4),range(4,8)):
+                        img = cv2.line(img, tuple(map(int, tuple(imgpts[i].ravel()))), tuple(map(int, tuple(imgpts[j].ravel()))),(0,0,255),3)
+                    # draw top layer in red color
+                    img = cv2.drawContours(img, imgpts[4:].astype(int),-1,(0,0,255),3)
+                    return img
+                
+                image = draw(image, corners, projected_point)
+        
         
         
         
@@ -214,5 +283,10 @@ def main():
     cam.release()
     if out:
         out.release()
+        
+        
+        
+if __name__ == "__main__":
+    main()
 
   
