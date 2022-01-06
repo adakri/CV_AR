@@ -119,7 +119,9 @@ def main():
             logging.info(f'Estimated distortion\n{distortion}')
             logging.info(f'Estimated intrinsics matrix\n{intrinsics}')
             
-            return
+            
+           
+            
 
         if out:
             out.write(image)
@@ -162,12 +164,47 @@ def main():
             else:
                 # now that camera is calibrated, we can estimate extrinsics
                 # TODO 2.2  find rotation and translation vectors.
-                ret, rotation_vectors, translation_vectors, _ = ...
-
+                
+                points3d = np.array(points3d, dtype='float32')
+                points2d = np.array(points2d, dtype='float32')
+                
+                print(points3d.shape)
+                
+                if(len(points3d.shape) == 2):
+                    m = points3d.shape
+                    points3d = points3d.reshape(m,3)
+                    points2d = points2d.reshape(m, 2)
+                else:
+                    m, n, _ = points3d.shape
+                    points3d = points3d.reshape(n * m,3)
+                    points2d = points2d.reshape(n * m, 2)
+                
+                
+                print(points3d.shape)
+                print(points2d.shape)
+                
+                points3d = points3d.reshape(n * m,3)
+                points2d = points2d.reshape(n * m, 2)
+                
+                
+                print(intrinsics.shape)
+                print(type(intrinsics))
+                
+                ret, rotation_vectors, translation_vectors, _ = cv2.solvePnPRansac(points3d, points2d, intrinsics, distortion)
+                
+                print("====Rot and trans vectors====")
+                print(rotation_vectors)
+                
+                print(translation_vectors)
                 # TODO 2.3 project 3D points to image using estimated parameters
-                projected_points, jacobian = ...
-
+                def compute_projection_error():
+                    return 0.
+            
+                projected_points, jacobian = cv2.projectPoints(points3d, translation_vectors, rotation_vectors,  intrinsics, distortion)
+                
                 image = draw(image, projected_points)
+                
+                cv2.waitKey(5000)
         
         
         
@@ -178,8 +215,4 @@ def main():
     if out:
         out.release()
 
-    cv2.destroyAllWindows()
-
-
-if __name__ == '__main__':
-    main()
+  
