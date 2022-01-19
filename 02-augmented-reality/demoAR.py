@@ -113,6 +113,7 @@ def main():
             # when user presses 'c', perform calibration
             # TODO 2.1: use the point3d <-> point2d matches to calibrate
             print("==Calibrating==")
+            
             ret, intrinsics, distortion, rvecs, tvecs = cv2.calibrateCamera(points3d, points2d, gray.shape[::-1], None, None)
             
             
@@ -178,7 +179,7 @@ def main():
                 print(intrinsics.shape)
                 print(type(intrinsics))
                 
-                ret, rotation_vectors, translation_vectors, _ = cv2.solvePnPRansac(points3d[-1], points2d[-1], intrinsics, distortion)
+                ret, rotation_vectors, translation_vectors, _= cv2.solvePnPRansac(points3d[-1], corners, intrinsics, distortion)
                 
                 
                 # TODO 2.3 project 3D points to image using estimated parameters
@@ -318,7 +319,7 @@ def main():
                     img = cv2.drawContours(img, [imgpts[4:]],-1,(0,0,255),3)
                     return img
                 
-                image = draw()
+                image = draw_cube()
         
         
         
