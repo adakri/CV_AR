@@ -136,7 +136,7 @@ def main():
             # TODO 1.3: if corners found, get sub-pixel refinement of corners
             #print(corners)
             
-            search_window_size = 11 # this will be multiplied by 2
+            search_window_size = 8 # this will be multiplied by 2
             dead_zone_size = -1
             
             corners = cv2.cornerSubPix(gray,corners, (search_window_size,search_window_size), (dead_zone_size,dead_zone_size), criteria)
@@ -153,6 +153,8 @@ def main():
             
                     points2d.append(corners)
                     
+                    
+                    
 
                     # show frames used for calibration as inverted
                     image = cv2.bitwise_not(image)
@@ -166,37 +168,18 @@ def main():
                 # now that camera is calibrated, we can estimate extrinsics
                 # TODO 2.2  find rotation and translation vectors.
                 
-                points3d = np.array(points3d, dtype='float32')
-                points2d = np.array(points2d, dtype='float32')
+                print("**********",len(points3d)," ", len(points2d))
                 
+
                 
-                len_obj = 0
-                
-                print("Shapes of point3d/2d")
-                print(points3d.shape)
-                print(points2d.shape)
-                
-                if(len(points3d.shape) == 2):
-                    
-                    m, _ = points3d.shape
-                    points3d = points3d.reshape(m,3)
-                    points2d = points2d.reshape(m, 2)
-                    len_obj = m
-                else:
-                    m, n, _ = points3d.shape
-                    points3d = points3d.reshape(n * m,3)
-                    points2d = points2d.reshape(n * m, 2)
-                    len_obj = n*m
-                
-                print("Shapes of point3d/2d")
-                print(points3d.shape)
-                print(points2d.shape)
+
                 
                 print("intrinsics shape")
                 print(intrinsics.shape)
                 print(type(intrinsics))
                 
-                ret, rotation_vectors, translation_vectors, _ = cv2.solvePnPRansac(points3d, points2d, intrinsics, distortion)
+                ret, rotation_vectors, translation_vectors, _ = cv2.solvePnPRansac(points3d[-1], points2d[-1], intrinsics, distortion)
+                
                 
                 # TODO 2.3 project 3D points to image using estimated parameters
                 
@@ -207,18 +190,23 @@ def main():
                 
                 def compute_projection_error():
                     error = 0.
-                    print(len_obj)
+                    print(len(points2d[-1]))
+                    print(len(points3d[-1]))
+                    
+                    
                     print(len(rvecs))
+                    print(len(tvecs))
+                    
                     print("===##=== inside the error function ===##===")
-                    for i in range(int(len_obj/30)):
-                        print(i)
-                        print(points2d[i])
-                        #error += np.sqrt(np.linalg.norm(projected_point[i] - points2d[i]))
-                        projected_points, jacobian = cv2.projectPoints(points3d[i], rvecs[i], tvecs[i],  intrinsics, distortion)
-                        projected_points = projected_points.flatten()
-                        print(projected_points)
-                        error += cv2.norm(points2d[i], projected_points, cv2.NORM_L2)
-                    error = error /(len_obj/3) 
+                    projected_points, jacobian = cv2.projectPoints(points3d[-1], rvecs[-1], tvecs[-1],  intrinsics, distortion)
+                    print("**",len(projected_points))
+                    print("**",len(points2d[-1]))
+                    
+                    for i in range(len(points2d[-1])):
+                        #projected_points = projected_points.flatten()
+                        
+                        error += cv2.norm(points2d[-1][i], projected_points[i], cv2.NORM_L2)
+                    error = error /len(points2d[-1])
                     print( "total error: {}".format(error) )
                  
                 compute_projection_error()
